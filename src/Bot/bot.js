@@ -1,37 +1,30 @@
-const express = require('express');
-const app = express();
-const port = 3000;
+require('dotenv').config();
 
+const { loadConfig } = require('./Utilities/reader.js');
 var updateTime = 30000
 var closeTime = 60000 * 15
 
-var f = false
+class LongShortBot {
+  constructor(profile) {
+    const config = loadConfig().profiles[profile];
 
-class LongShort {
-  constructor(API_KEY, API_SECRET, PAPER) {
     this.Alpaca = require("@alpacahq/alpaca-trade-api");
     this.alpaca = new this.Alpaca({
-      keyId: API_KEY,
-      secretKey: API_SECRET,
-      paper: PAPER,
+      keyId: config.apiKey,
+      secretKey: config.apiSecret,
+      paper: config.paper,
     });
-    this.allStocks = [
-      "TSLA",
-      "RBLX",
-      "MSFT",
-      "AAPL"
-    ];
+
+    this.allStocks = config.stocks || []
     var temp = [];
     this.allStocks.forEach((stockName) => {
       temp.push({ name: stockName, pc: 0 });
     });
     this.allStocks = temp.slice();
 
-    this.lastUpdated = new Date().toISOString()
+    this.running = false;
+    this.lastUpdated = new Date().toISOString();
     this.logs = [];
-
-    this.long = [];
-    this.short = [];
     this.qShort = null;
     this.qLong = null;
     this.adjustedQLong = null;
@@ -53,14 +46,14 @@ class LongShort {
         orders = resp;
       })
       .catch((err) => {
-        this.logs.push(err.error);
+        this.log(err.error, 3);
       });
     var promOrders = [];
     orders.forEach((order) => {
       promOrders.push(
         new Promise(async (resolve, reject) => {
           await this.alpaca.cancelOrder(order.id).catch((err) => {
-            this.logs.push(err.error);
+            this.log(err.error, 3);
           });
           resolve();
         })
@@ -68,10 +61,10 @@ class LongShort {
     });
     await Promise.all(promOrders);
 
-    this.logs.push("Waiting for market to open...");
+    this.log("Waiting for market to open...", 1);
     var promMarket = this.awaitMarketOpen();
     await promMarket;
-    this.logs.push("Market opened.");
+    this.log("Market opened.", 1);
 
     var spin = setInterval(async () => {
       this.lastUpdated = new Date().toISOString()
@@ -88,11 +81,11 @@ class LongShort {
           this.timeToClose = Math.abs(closingTime - currTime);
         })
         .catch((err) => {
-          console.log(err.error);
+          this.log(err.error), 3;
         });
 
       if (this.timeToClose < closeTime) {
-        this.logs.push("Market closing soon.  Closing positions.")
+        this.log("Market closing soon.  Closing positions.", 1)
 
         await this.alpaca
           .getPositions()
@@ -114,10 +107,10 @@ class LongShort {
             await Promise.all(promClose);
           })
           .catch((err) => {
-            console.log(err.error);
+            this.log(err.error, 3);
           });
         clearInterval(spin);
-        console.log("Sleeping until market close (15 minutes).");
+        this.log("Sleeping until market close (15 minutes).", 1);
         setTimeout(() => {
           this.run();
         }, closeTime);
@@ -152,15 +145,10 @@ class LongShort {
                   this.timeToClose = Math.floor(
                     (openTime - currTime) / 1000 / 60
                   );
-                  /*
-                  console.log(
-                    this.timeToClose + " minutes til next market open."
-                  );
-                  */
                 }
               })
               .catch((err) => {
-                this.logs.push(err.error);
+                this.log(err.error, 3);
               });
           }, updateTime);
         }
@@ -181,7 +169,7 @@ class LongShort {
             time_in_force: "day",
           })
           .then(() => {
-            console.log(
+            this.log(
               "Market order of | " +
                 quantity +
                 " " +
@@ -189,11 +177,11 @@ class LongShort {
                 " " +
                 side +
                 " | completed."
-            );
+            , 2);
             resolve(true);
           })
           .catch((err) => {
-            this.logs.push(
+            this.log(
               "Order of | " +
                 quantity +
                 " " +
@@ -201,11 +189,11 @@ class LongShort {
                 " " +
                 side +
                 " | did not go through."
-            );
+            , 2);
             resolve(false);
           });
       } else {
-        this.logs.push(
+        this.log(
           "Quantity is <=0, order of | " +
             quantity +
             " " +
@@ -213,7 +201,7 @@ class LongShort {
             " " +
             side +
             " | not sent."
-        );
+        , 2);
         resolve(true);
       }
     });
@@ -233,14 +221,14 @@ class LongShort {
         orders = resp;
       })
       .catch((err) => {
-        console.log(err.error);
+        this.log(err.error, 3);
       });
     var promOrders = [];
     orders.forEach((order) => {
       promOrders.push(
         new Promise(async (resolve, reject) => {
           await this.alpaca.cancelOrder(order.id).catch((err) => {
-            console.log(err.error);
+            this.log(err.error, 3);
           });
           resolve();
         })
@@ -248,8 +236,8 @@ class LongShort {
     });
     await Promise.all(promOrders);
 
-    this.logs.push("We are taking a long position in: " + this.long.toString());
-    this.logs.push("We are taking a short position in: " + this.short.toString());
+    this.log("Taking a long position in: " + this.long.toString(), 1);
+    this.log("Taking a short position in: " + this.short.toString(), 1);
 
     var positions;
     await this.alpaca
@@ -258,7 +246,7 @@ class LongShort {
         positions = resp;
       })
       .catch((err) => {
-        console.log(err.error);
+        this.log(err.error, 3);
       });
     var promPositions = [];
     var executed = { long: [], short: [] };
@@ -450,7 +438,7 @@ class LongShort {
         equity = resp.equity;
       })
       .catch((err) => {
-        console.log(err.error);
+        this.log(err.error, 3);
       });
     this.shortAmount = 0.3 * equity;
     this.longAmount = Number(this.shortAmount) + Number(equity);
@@ -479,31 +467,21 @@ class LongShort {
     });
   }
 
-  getTotalPrice(stocks) {
-    var proms = [];
-
-    stocks.forEach(async (stock) => {
-      proms.push(
-        new Promise(async (resolve, reject) => {
-          const bars = this.alpaca.getBarsV2(
-            stock,
-            {
-              timeframe: this.alpaca.newTimeframe(
-                1,
-                this.alpaca.timeframeUnit.MIN
-              ),
-              limit: 1,
-            },
-            this.alpaca.configuration
-          );
-
-          for await (let b of bars) {
-            resolve(b.ClosePrice);
-          }
-        })
+  async getTotalPrice(stock) {
+    try {
+      const bars = await this.alpaca.getBarsV2(
+        stock,
+        { timeframe: this.alpaca.newTimeframe(1, this.alpaca.timeframeUnit.MIN), limit: 1 },
+        this.alpaca.configuration
       );
-    });
-    return proms;
+
+      for await (let b of bars) {
+        return b.ClosePrice;
+      }
+    } catch (error) {
+      this.log(error.message, 3);
+      return 0;
+    }
   }
 
   async sendBatchOrder(quantity, stocks, side) {
@@ -560,7 +538,7 @@ class LongShort {
               stock.pc = pc;
             }
           } catch (err) {
-            console.log("err", err);
+            this.log(err, 3);
           }
 
           resolve();
@@ -578,45 +556,37 @@ class LongShort {
     this.allStocks.sort((a, b) => {
       return a.pc - b.pc;
     });
+  };
+
+  async log(log="Unknown error occured.", logType=1) {
+    this.logs.push({log, logType});
+    if (logType === 3) {
+      console.log(log) // Error
+    }
+  }
+
+  fetchRunDown() {
+    return {
+      running: this.running,
+      lastUpdated: this.lastUpdated,
+      rankings: this.allStocks,
+      logs: this.logs,
+    };
   }
 }
 
-// Create long short account \\
-var ls = new LongShort(
-  "PKVQBFX91VU3INZ7MPFC", "512gQTsahqckUWSmRU1ixm4WfWdbCTLhcgh9Jm1H",
-  true
-)
-ls.run();
+const bots = {};
 
-// End points \\
-app.get('/api/lastupdated', (req, res) => {
-  if (ls) {
-    const lastUpdated = ls.lastUpdated;
-    res.json({lastUpdated});
+function initAllAccounts() {
+  const accounts = loadConfig().profiles;
+
+  for (const accountName in accounts) {
+
+    var createdBot = new LongShortBot(accountName);
+    createdBot.run()
+
+    bots[accountName] = createdBot
   }
-});
+}; initAllAccounts();
 
-app.get('/api/rankings', (req, res) => {
-  if (ls) {
-    const rankings = ls.allStocks;
-    res.json({rankings});
-  }
-});
-
-app.get('/api/short', (req, res) => {
-  if (ls) {
-    const rankings = ls.alpaca.getPositions();
-    res.json({rankings});
-  }
-});
-
-app.get('/api/logs', (req, res) => {
-  if (ls) {
-    const logs = ls.logs;
-    res.json({logs});
-  }
-});
-
-app.listen(port, () =>
-  console.log(`Express server is running on localhost:${port}`)
-);
+module.exports = { LongShortBot, bots }

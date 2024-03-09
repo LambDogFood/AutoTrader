@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "Admin": {
+      "apiKey": "PKVQBFX91VU3INZ7MPFC",
+      "apiSecret": "512gQTsahqckUWSmRU1ixm4WfWdbCTLhcgh9Jm1H",
+      "paper": true,
+      "stocks": [
+        "TSLA",
+        "RBLX",
+        "MSFT",
+        "AAPL"
+      ]
+    }
+  }
+}

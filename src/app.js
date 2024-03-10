@@ -1,61 +1,68 @@
 require('dotenv').config();
 
-const path = require('path');
-const fs = require('fs');
 const express = require('express');
 const bodyParser = require('body-parser');
-const { LongShortBot, bots } = require('./Bot/bot.js');
+const { newProfile, getProfiles } = require('./Utilities/profiles.js')
+const { activeTraders, newTrader } = require('./Bot/trader.js')
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const profilesPath = path.join(__dirname, '../profiles.json');
 
 app.use(bodyParser.json());
 
 app.get('/api/data/:accountName', (req, res) => {
   const accountName = req.params.accountName;
 
-  if (!bots[accountName]) {
+  if (!activeTraders[accountName]) {
     return res.status(404).json({ error: `Account ${accountName} not found` });
   }
 
-  const dataForWebPanel = bots[accountName].fetchRunDown();
+  const dataForWebPanel = activeTraders[accountName].fetchRunDown();
   res.json(dataForWebPanel);
 });
 
 app.post('/api/shutdown/:accountName', (req, res) => {
   const accountName = req.params.accountName;
 
-  if (!bots[accountName]) {
+  if (!activeTraders[accountName]) {
     return res.status(404).json({ error: `Account ${accountName} not found` });
   }
 
-  // bots[accountName].shutdownBot(); [DEPRECATED]
-  res.status(405).json({ error: 'Deprecated API' });
+  activeTraders[accountName].stop();
+  res.json({message: "Successfully shutdown bot."});
 });
 
-app.post('/api/create-bot', (req, res) => {
-  try {
-    const { apiKey, apiSecret, paper, accountName, stocks } = req.body;
+app.post('/api/start/:accountName', (req, res) => {
+  const accountName = req.params.accountName;
 
-    if (bots[accountName]) {
-      return res.status(400).json({ error: `Account ${accountName} already exists` });
+  if (!getProfiles(accountName)) {
+    return res.status(404).json({ error: `Account ${accountName} not found` });
+  }
+
+  var trader = activeTraders[accountName]
+  if (!trader) { 
+    newTrader(accountName);
+  } else {
+  
+    if (!activeTraders[accountName].running) {
+      activeTraders[accountName].run()
     }
 
-    const profiles = JSON.parse(fs.readFileSync(profilesPath, 'utf-8'));
-    profiles.profiles[accountName] = { apiKey, apiSecret, paper, stocks };
+  }
 
-    fs.writeFileSync(profilesPath, JSON.stringify(profiles, null, 2));
+  res.json({message: "Successfully started bot."});
+})
 
-    const newBot = new LongShortBot(accountName);
-    bots[accountName] = newBot;
+app.post('/api/create-bot', (req, res) => {
 
-    newBot.run()
+  const { accountName, apiKey, apiSecret, paper, symbols } = req.body;
 
-    res.json({ message: `Bot created for account ${accountName}` });
-  } catch (error) {
+  var result = newProfile(accountName, apiKey, apiSecret, symbols, paper)
+  if (result === true) {
+    newTrader(accountName);
+  } else {
     console.error('Error creating bot:', error.message);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({error: 'Internal Server Error'});
   }
 });
 

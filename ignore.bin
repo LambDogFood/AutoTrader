@@ -1,0 +1,82 @@
+/*var orders;
+    await this.alpaca
+      .getOrders({
+        status: "open",
+        direction: "desc",
+      })
+      .then((resp) => {
+        orders = resp;
+      })
+      .catch((err) => {
+        this.log(err.error, 3);
+      });
+    var promOrders = [];
+    orders.forEach((order) => {
+      promOrders.push(
+        new Promise(async (resolve, reject) => {
+          await this.alpaca.cancelOrder(order.id).catch((err) => {
+            this.log(err.error, 3);
+          });
+          resolve();
+        })
+      );
+    });
+    await Promise.all(promOrders);
+
+    this.log("Waiting for market to open...", 1);
+    var promMarket = this.awaitMarketOpen();
+    await promMarket;
+    this.log("Market opened.", 1);
+
+    var spin = setInterval(async () => {
+      this.lastUpdated = new Date().toISOString()
+
+      await this.alpaca
+        .getClock()
+        .then((resp) => {
+          var closingTime = new Date(
+            resp.next_close.substring(0, resp.next_close.length - 6)
+          );
+          var currTime = new Date(
+            resp.timestamp.substring(0, resp.timestamp.length - 6)
+          );
+          this.timeToClose = Math.abs(closingTime - currTime);
+        })
+        .catch((err) => {
+          this.log(err.error), 3;
+        });
+
+      if (this.timeToClose < closeTime) {
+        this.log("Market closing soon.  Closing positions.", 1)
+
+        await this.alpaca
+          .getPositions()
+          .then(async (resp) => {
+            var promClose = [];
+            resp.forEach((position) => {
+              promClose.push(
+                new Promise(async (resolve, reject) => {
+                  var orderSide;
+                  if (position.side == "long") orderSide = "sell";
+                  else orderSide = "buy";
+                  var quantity = Math.abs(position.qty);
+                  await this.submitOrder(quantity, position.symbol, orderSide);
+                  resolve();
+                })
+              );
+            });
+
+            await Promise.all(promClose);
+          })
+          .catch((err) => {
+            this.log(err.error, 3);
+          });
+        clearInterval(spin);
+        this.log("Sleeping until market close (15 minutes).", 1);
+        setTimeout(() => {
+          this.run();
+        }, closeTime);
+      } else {
+        await this.rebalance();
+      }
+    }, updateTime);*/

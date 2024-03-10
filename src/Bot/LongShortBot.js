@@ -1,30 +1,37 @@
 require('dotenv').config();
 
-const { loadConfig } = require('./Utilities/reader.js');
-var updateTime = 30000
-var closeTime = 60000 * 15
+const { getProfiles } = require("../Utilities/profiles")
+
+var updateTime = 30000 // How often the alogorithm will update in ms
+var closeTime = 60000 * 15 // Closes positions before market ends (saftey)
 
 class LongShortBot {
-  constructor(profile) {
-    const config = loadConfig().profiles[profile];
 
+  constructor(accountName) {
+
+    // Get profile configuration
+    const profile = getProfiles(accountName);
+    if (!profile) {
+      console.error(`Could not find profile: ${accountName}`);
+      process.exit(1);
+    }
+
+    // Load alpaca API
     this.Alpaca = require("@alpacahq/alpaca-trade-api");
     this.alpaca = new this.Alpaca({
-      keyId: config.apiKey,
-      secretKey: config.apiSecret,
-      paper: config.paper,
+      keyId: profile.apiKey,
+      secretKey: profile.apiSecret,
+      paper: profile.paper,
     });
 
-    this.allStocks = config.stocks || []
+    // Sort and init all stock ranking data
     var temp = [];
-    this.allStocks.forEach((stockName) => {
+    profile.symbols.forEach((stockName) => {
       temp.push({ name: stockName, pc: 0 });
     });
     this.allStocks = temp.slice();
 
-    this.running = false;
-    this.lastUpdated = new Date().toISOString();
-    this.logs = [];
+    // Trading variables
     this.qShort = null;
     this.qLong = null;
     this.adjustedQLong = null;
@@ -33,9 +40,21 @@ class LongShortBot {
     this.longAmount = 0;
     this.shortAmount = 0;
     this.timeToClose = null;
+
+    // Status variables
+    this.running = false;
+    this.status = "Offline"; // "Idle", "Online", "Offline"
+    this.lastUpdated = new Date().toISOString();
+    this.logs = [];
   }
 
   async run() {
+    if (this.runPromise) {
+      // The bot is already running
+      return this.runPromise;
+    }
+
+    // Check for open orders and remove them for re-evalauation
     var orders;
     await this.alpaca
       .getOrders({
@@ -51,7 +70,7 @@ class LongShortBot {
     var promOrders = [];
     orders.forEach((order) => {
       promOrders.push(
-        new Promise(async (resolve, reject) => {
+        new Promise(async (resolve) => {
           await this.alpaca.cancelOrder(order.id).catch((err) => {
             this.log(err.error, 3);
           });
@@ -61,63 +80,93 @@ class LongShortBot {
     });
     await Promise.all(promOrders);
 
-    this.log("Waiting for market to open...", 1);
-    var promMarket = this.awaitMarketOpen();
-    await promMarket;
-    this.log("Market opened.", 1);
+    new Promise(async (resolve) => {
+      this.runPromise = resolve;
+      let spin;
 
-    var spin = setInterval(async () => {
-      this.lastUpdated = new Date().toISOString()
+      // Wait for approval
+      this.running = true;
+      this.status = "Idle";
+      await this.awaitMarketOpen();
 
-      await this.alpaca
-        .getClock()
-        .then((resp) => {
-          var closingTime = new Date(
-            resp.next_close.substring(0, resp.next_close.length - 6)
-          );
-          var currTime = new Date(
-            resp.timestamp.substring(0, resp.timestamp.length - 6)
-          );
-          this.timeToClose = Math.abs(closingTime - currTime);
-        })
-        .catch((err) => {
-          this.log(err.error), 3;
-        });
+      try {
+        spin = setInterval(async () => {
 
-      if (this.timeToClose < closeTime) {
-        this.log("Market closing soon.  Closing positions.", 1)
+          this.status = "Online";
 
-        await this.alpaca
-          .getPositions()
-          .then(async (resp) => {
-            var promClose = [];
-            resp.forEach((position) => {
-              promClose.push(
-                new Promise(async (resolve, reject) => {
-                  var orderSide;
-                  if (position.side == "long") orderSide = "sell";
-                  else orderSide = "buy";
-                  var quantity = Math.abs(position.qty);
-                  await this.submitOrder(quantity, position.symbol, orderSide);
-                  resolve();
-                })
+          // Runtime checker
+          if (!this.running) {
+            clearInterval(spin);
+            await this.stop();
+            resolve(); // Resolve the promise to signal that the bot has stopped
+            return;
+          }
+
+          // Monitor market status
+          await this.alpaca
+            .getClock()
+            .then((resp) => {
+              var closingTime = new Date(
+                resp.next_close.substring(0, resp.next_close.length - 6)
               );
+              var currTime = new Date(
+                resp.timestamp.substring(0, resp.timestamp.length - 6)
+              );
+              this.timeToClose = Math.abs(closingTime - currTime);
+            })
+            .catch((err) => {
+              this.log(err.error), 3;
             });
 
-            await Promise.all(promClose);
-          })
-          .catch((err) => {
-            this.log(err.error, 3);
-          });
+          // Check market status
+          if (this.timeToClose < closeTime) {
+            await this.closePositions(); // Close active positions before closing
+            clearInterval(spin);
+            this.log("Sleeping until market close.", 1);
+            setTimeout(() => {
+              this.run();
+            }, closeTime);
+          } else {
+            await this.rebalance();
+          }
+
+          this.lastUpdated = new Date().toISOString();
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, updateTime));
+
+      } catch (error) {
+        this.log(`HALT! Fatal error: ${error.error}`, 3);
+      } finally {
         clearInterval(spin);
-        this.log("Sleeping until market close (15 minutes).", 1);
-        setTimeout(() => {
-          this.run();
-        }, closeTime);
-      } else {
-        await this.rebalance();
+        await this.stop();
+        resolve(); // Resolve the promise to signal that the bot has stopped
       }
-    }, updateTime);
+    });
+  }
+
+  async closePositions() {
+    await this.alpaca
+      .getPositions()
+      .then(async (resp) => {
+        var promClose = [];
+        resp.forEach((position) => {
+          promClose.push(
+            new Promise(async (resolve, reject) => {
+              var orderSide;
+              if (position.side == "long") orderSide = "sell"; else orderSide = "buy";
+              var quantity = Math.abs(position.qty);
+              await this.submitOrder(quantity, position.symbol, orderSide);
+              resolve();
+            })
+          );
+        });
+
+        await Promise.all(promClose);
+      })
+      .catch((err) => {
+        this.log(err.error, 3);
+      });
   }
 
   awaitMarketOpen() {
@@ -171,37 +220,37 @@ class LongShortBot {
           .then(() => {
             this.log(
               "Market order of | " +
-                quantity +
-                " " +
-                stock +
-                " " +
-                side +
-                " | completed."
-            , 2);
+              quantity +
+              " " +
+              stock +
+              " " +
+              side +
+              " | completed."
+              , 2);
             resolve(true);
           })
           .catch((err) => {
             this.log(
               "Order of | " +
-                quantity +
-                " " +
-                stock +
-                " " +
-                side +
-                " | did not go through."
-            , 2);
+              quantity +
+              " " +
+              stock +
+              " " +
+              side +
+              " | did not go through."
+              , 2);
             resolve(false);
           });
       } else {
         this.log(
           "Quantity is <=0, order of | " +
-            quantity +
-            " " +
-            stock +
-            " " +
-            side +
-            " | not sent."
-        , 2);
+          quantity +
+          " " +
+          stock +
+          " " +
+          side +
+          " | not sent."
+          , 2);
         resolve(true);
       }
     });
@@ -380,7 +429,7 @@ class LongShortBot {
         await Promise.all(promBatches);
       })
       .then(async () => {
-        var promReorder = new Promise(async (resolve, reject) => {
+        var promReorder = new Promise(async (resolve) => {
           var promLong = [];
           if (this.adjustedQLong >= 0) {
             this.qLong = this.adjustedQLong - this.qLong;
@@ -558,15 +607,26 @@ class LongShortBot {
     });
   };
 
-  async log(log="Unknown error occured.", logType=1) {
-    this.logs.push({log, logType});
+  async log(log = "Unknown error occured.", logType = 1) {
+    this.logs.push({ log, logType });
     if (logType === 3) {
       console.log(log) // Error
     }
-  }
+  };
+
+  async stop() {
+    if (this.runPromise) {
+      this.runPromise();
+      this.runPromise = null;
+    }
+
+    this.running = false;
+    this.status = "Offline";
+  };
 
   fetchRunDown() {
     return {
+      status: this.status,
       running: this.running,
       lastUpdated: this.lastUpdated,
       rankings: this.allStocks,
@@ -575,18 +635,4 @@ class LongShortBot {
   }
 }
 
-const bots = {};
-
-function initAllAccounts() {
-  const accounts = loadConfig().profiles;
-
-  for (const accountName in accounts) {
-
-    var createdBot = new LongShortBot(accountName);
-    createdBot.run()
-
-    bots[accountName] = createdBot
-  }
-}; initAllAccounts();
-
-module.exports = { LongShortBot, bots }
+module.exports = { LongShortBot }

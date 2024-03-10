@@ -1,3 +1,3 @@
 @ECHO OFF
-node bot --allow-net --allow-read bot
+node src/app --allow-net --allow-read src/app
 PAUSE

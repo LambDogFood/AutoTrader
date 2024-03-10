@@ -1,5 +1,6 @@
-require('dotenv').config();
+// LordDogFood
 
+require('dotenv').config();
 const { getProfiles } = require("../Utilities/profiles")
 
 var updateTime = 30000 // How often the alogorithm will update in ms
@@ -170,7 +171,7 @@ class LongShortBot {
   }
 
   awaitMarketOpen() {
-    var prom = new Promise(async (resolve, reject) => {
+    var prom = new Promise(async (resolve) => {
       var isOpen = false;
       await this.alpaca.getClock().then(async (resp) => {
         if (resp.is_open) {
@@ -275,7 +276,7 @@ class LongShortBot {
     var promOrders = [];
     orders.forEach((order) => {
       promOrders.push(
-        new Promise(async (resolve, reject) => {
+        new Promise(async (resolve) => {
           await this.alpaca.cancelOrder(order.id).catch((err) => {
             this.log(err.error, 3);
           });
@@ -304,7 +305,7 @@ class LongShortBot {
 
     positions.forEach((position) => {
       promPositions.push(
-        new Promise(async (resolve, reject) => {
+        new Promise(async (resolve) => {
           if (this.long.indexOf(position.symbol) < 0) {
             if (this.short.indexOf(position.symbol) < 0) {
               if (position.side == "long") side = "sell";
@@ -396,7 +397,7 @@ class LongShortBot {
       .then(async (resp) => {
         resp.forEach(async (arrays, i) => {
           promBatches.push(
-            new Promise(async (resolve, reject) => {
+            new Promise(async (resolve) => {
               if (i == 0) {
                 arrays[1] = arrays[1].concat(executed.long);
                 executed.long = arrays[1].slice();
@@ -435,7 +436,7 @@ class LongShortBot {
             this.qLong = this.adjustedQLong - this.qLong;
             executed.long.forEach(async (stock) => {
               promLong.push(
-                new Promise(async (resolve, reject) => {
+                new Promise(async (resolve) => {
                   var promLong = this.submitOrder(this.qLong, stock, "buy");
                   await promLong;
                   resolve();
@@ -449,7 +450,7 @@ class LongShortBot {
             this.qShort = this.adjustedQShort - this.qShort;
             executed.short.forEach(async (stock) => {
               promShort.push(
-                new Promise(async (resolve, reject) => {
+                new Promise(async (resolve) => {
                   var promShort = this.submitOrder(this.qShort, stock, "sell");
                   await promShort;
                   resolve();
@@ -565,7 +566,7 @@ class LongShortBot {
 
     allStocks.forEach((stock) => {
       promStocks.push(
-        new Promise(async (resolve, reject) => {
+        new Promise(async (resolve) => {
           try {
             const bars = this.alpaca.getBarsV2(
               stock.name,
@@ -610,7 +611,7 @@ class LongShortBot {
   async log(log, logType = 1) {
     this.logs.push({ log, logType });
     if (logType === 3) {
-      console.error(log) // Error
+      console.error(log)
     }
   };
 

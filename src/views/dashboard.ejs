@@ -22,10 +22,9 @@
             <h3 id="<%= bot.accountName %>-name"><%= bot.accountName %></h3>
           </div>
           <ul id="<%= bot.accountName %>-buttons" class="bot-buttons">
-            <li id="<%= bot.accountName %>-settings-tab" onclick="showTab('<%= bot.accountName %>', 'settings')">Settings</li>
-            <li id="<%= bot.accountName %>-symbols-tab" onclick="showTab('<%= bot.accountName %>', 'symbols')">Symbols</li>
-            <li id="<%= bot.accountName %>-graphs-tab" onclick="showTab('<%= bot.accountName %>', 'graphs')">Graphs</li>
-            <li id="<%= bot.accountName %>-status-tab" onclick="showTab('<%= bot.accountName %>', 'status')">Status</li>
+            <li id="<%= bot.accountName %>-settings-tab" onclick="showTab('<%= bot.accountName %>', 'settings')">Overview</li>
+            <li id="<%= bot.accountName %>-symbols-tab" onclick="showTab('<%= bot.accountName %>', 'symbols')">Settings</li>
+            <li id="<%= bot.accountName %>-status-tab" onclick="showTab('<%= bot.accountName %>', 'status')">Logs</li>
           </ul>
         </div>
       <% }); %>
@@ -33,14 +32,6 @@
 
     <!-- Main Content Area -->
     <div class="main-content">
-      <!-- Content for each bot -->
-      <!-- Add content for each bot dynamically as needed -->
-      <div id="bot-settings-content" style="display: none;">
-        <form id="settings-form">
-          <!-- Add other settings here, e.g., apiSecret, paper, money, accountName, symbols -->
-          <button type="submit">Save Changes</button>
-        </form>
-      </div>
     </div>
 
     <div id="result"></div>

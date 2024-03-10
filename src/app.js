@@ -1,24 +1,33 @@
-require('dotenv').config();
+// LordDogFood (Alex E.)
 
+// Dependencies
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
-const cors = require('cors');
-const { newProfile, getProfiles } = require('./Utilities/profiles.js')
-const { activeTraders, newTrader } = require('./Bot/trader.js');
-const { profileEnd } = require('console');
+const dotenv = require('dotenv');
 
+// Load environment variables from .env file
+dotenv.config();
+
+// Custom modules
+const { newProfile, getProfiles } = require('./Utilities/profiles.js');
+const { activeTraders, newTrader } = require('./Bot/trader.js');
+
+// Express setup
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// View engine and static files configuration
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
-
-app.use(cors());
 app.use(bodyParser.json());
 
-// Website views
+// Web views
+app.get('/', async (req, res) => {
+  res.redirect('/dashboard')
+})
+
 app.get('/dashboard', async (req, res) => {
   try {
     const profiles = await getProfiles();
@@ -29,13 +38,7 @@ app.get('/dashboard', async (req, res) => {
   }
 });
 
-// Api
-app.get('/api/settings/:accountName', (req, res) => {
-  const accountName = req.params.accountName;
-  const profile = getProfiles(accountName);
-  res.json(profile)
-});
-
+// GET Requests
 app.get('/api/data/:accountName', (req, res) => {
   const accountName = req.params.accountName;
 
@@ -74,6 +77,7 @@ app.get('/api/profiles', async (req, res) => {
   }
 });
 
+// POST Requests
 app.post('/api/shutdown/:accountName', (req, res) => {
   const accountName = req.params.accountName;
 
@@ -119,6 +123,7 @@ app.post('/api/create-bot', (req, res) => {
   }
 });
 
+// Start Server
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

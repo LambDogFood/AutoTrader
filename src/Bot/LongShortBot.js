@@ -3,8 +3,8 @@
 require('dotenv').config();
 const { getProfiles } = require("../Utilities/profiles")
 
-var updateTime = 30000 // How often the alogorithm will update in ms
-var closeTime = 60000 * 15 // Closes positions before market ends (saftey)
+var updateTime = 30000
+var closeTime = 60000 * 15
 
 class LongShortBot {
 

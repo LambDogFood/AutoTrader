@@ -1,20 +1,18 @@
-/* stylesheets/style.css */
-
 body {
   margin: 0;
-  font-family: 'Roboto', sans-serif; /* Use Roboto as the main font */
+  font-family: 'Roboto', sans-serif; 
 }
 
 .dashboard {
   display: flex;
-  height: 100vh; /* Use viewport height for full-page height */
+  height: 100vh;
 }
 
 .side-bar {
   width: 250px;
-  background-color: #23272a; /* Discord's primary color */
+  background-color: #F4F7F5;
   color: #fff;
-  padding: 20px;
+  padding: 10px;
   overflow-y: auto;
   height: 100%;
   box-sizing: border-box;
@@ -23,7 +21,7 @@ body {
 .side-bar h1 {
   margin-bottom: 20px;
   font-size: 1.5em;
-  color: #fff;
+  color: #08090A;
 }
 
 .bot-dropdown {
@@ -35,66 +33,68 @@ body {
   cursor: pointer;
   display: flex;
   align-items: center;
-  color: #7289da; /* Discord's accent color */
-  background-color: #2c2f33; /* Discord's secondary color */
+  color: #08090A;
+  background-color: #F4F7F5;
   padding: 10px;
-  border-radius: 8px; /* Rounded corners for the entire bot header */
+  border-radius: 5px; 
+  border: 1px solid #0000003e;
+}
+
+.bot-header:hover {
+  background-color: #cbcbcb; 
 }
 
 .bot-header .bot-status {
   user-select: none;
   margin-right: 10px;
-  width: 14px;
-  height: 14px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background-color: #747f8d;
 }
 
 .bot-header h3 {
+  font-weight: 500;
   margin: 0;
 }
 
 .bot-buttons {
+  margin: 5px;
   user-select: none;
   list-style-type: none;
   padding: 0;
-  /*opacity: 0;*/
   overflow-y: auto;
   display: none;
-  /*-webkit-transition: max-height 0.2 ease, opacity 0.5s ease;
-  transition: max-height 0.2s ease, opacity 0.5s ease;*/
 }
 
 .bot-buttons.show {
   display: block;
-  /*max-height: 30vh;
-  opacity: 1;*/
 }
 
 .bot-buttons li {
   user-select: none;
   padding: 10px;
   cursor: pointer;
-  background-color: #2c2f33; /* Discord's secondary color */
-  color: #fff;
+  background-color: #F4F7F5;
+  color: #08090A;
   margin-bottom: 5px;
-  border-radius: 8px; /* Rounded corners for button-like appearance */
   transition: background-color 0.3s;
+  border-radius: 5px;
+  border: 1px solid #0000003e;
 }
 
 .bot-buttons li:hover {
-  background-color: #23272a; /* Discord's primary color */
+  background-color: #cbcbcb;
 }
 
 .main-content {
   flex-grow: 1;
   padding: 20px;
-  background-color: #36393f;
+  background-color: #F4F7F5;
   height: 100%;
   box-sizing: border-box;
 }
 
-/* Media Query for small screens */
 @media (max-width: 768px) {
   .dashboard {
     flex-direction: column;

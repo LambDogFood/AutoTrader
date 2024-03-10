@@ -607,10 +607,10 @@ class LongShortBot {
     });
   };
 
-  async log(log = "Unknown error occured.", logType = 1) {
+  async log(log, logType = 1) {
     this.logs.push({ log, logType });
     if (logType === 3) {
-      console.log(log) // Error
+      console.error(log) // Error
     }
   };
 

@@ -11,6 +11,18 @@
         "MSFT",
         "AAPL"
       ]
+    },
+    "DogFood": {
+      "accountName": "DogFood",
+      "apiKey": "PKVQBFX91VU3INZ7MPFC",
+      "apiSecret": "512gQTsahqckUWSmRU1ixm4WfWdbCTLhcgh9Jm1H",
+      "paper": true,
+      "symbols": [
+        "TSLA",
+        "RBLX",
+        "MSFT",
+        "AAPL"
+      ]
     }
   }
 }

@@ -2,12 +2,14 @@ require('dotenv').config();
 
 const express = require('express');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 const { newProfile, getProfiles } = require('./Utilities/profiles.js')
 const { activeTraders, newTrader } = require('./Bot/trader.js')
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(cors());  // Enable CORS for all routes
 app.use(bodyParser.json());
 
 app.get('/api/data/:accountName', (req, res) => {
@@ -20,6 +22,17 @@ app.get('/api/data/:accountName', (req, res) => {
   const dataForWebPanel = activeTraders[accountName].fetchRunDown();
   res.json(dataForWebPanel);
 });
+
+app.get('/api/profiles', (req, res) => {
+  const profiles = getProfiles();
+  const temp = [];
+
+  for (const acountName in profiles) {
+    temp.push[{acountName: acountName}];
+  }
+
+  res.json(profiles)
+})
 
 app.post('/api/shutdown/:accountName', (req, res) => {
   const accountName = req.params.accountName;

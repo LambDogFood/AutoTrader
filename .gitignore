@@ -1,3 +1,4 @@
 #misc
 .env
 .bin
+.DS_Store

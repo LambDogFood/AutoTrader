@@ -21,16 +21,16 @@ function getTraderProfile(traderName) {
   }
 }
 
-/*function newProfile(accountName, apiKey, apiSecret, symbols, paper) {
-  const profiles = getProfiles();
+function newProfile(traderName, strategy, apiKey, apiSecret, symbols, paper) {
+  const profiles = getTraderProfile();
   
-  if (profiles[accountName]) {
-    console.warn(`Warning: Cannot create profile, ${accountName} already exists.`)
+  if (profiles[traderName]) {
+    console.warn(`Warning: Cannot create profile, ${traderName} already exists.`)
     process.exit(1);
   }
 
   try { 
-    profiles[accountName] = { apiKey, apiSecret, paper, symbols };
+    profiles[traderName] = { strategy, apiKey, apiSecret, paper, symbols };
     fs.writeFileSync(profilesPath, JSON.stringify(profiles, null, 2));
 
     return true
@@ -40,25 +40,25 @@ function getTraderProfile(traderName) {
   }
 }
 
-function removeProfile(accountName) {
-  const profiles = getProfiles();
+function removeProfile(traderName) {
+  const profiles = getTraderProfile();
 
-  if (!profiles.profiles[accountName]) {
+  if (!profiles[traderName]) {
     console.error('Unable to remove non-existing profile:', accountName);
     process.exit(1);
   }
 
-  delete profiles.profiles[accountName];
+  delete profiles[traderName];
 
   try {
     fs.writeFileSync(profilesPath, JSON.stringify(profiles, null, 2));
-    console.log(`Profile "${accountName}" removed successfully.`);
+    console.log(`Profile "${traderName}" removed successfully.`);
 
     return true
     
   } catch (error) {
     console.error('Error writing profiles.json:', error.message);
   }
-}*/
+}
 
-module.exports = { getTraderProfile /*, newProfile, removeProfile*/ };
+module.exports = { getTraderProfile, newProfile, removeProfile };

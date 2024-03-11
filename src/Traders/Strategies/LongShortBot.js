@@ -617,16 +617,6 @@ class LongShortBot {
     this.running = false;
     this.status = "Offline";
   };
-
-  fetchRunDown() {
-    return {
-      status: this.status,
-      running: this.running,
-      lastUpdated: this.lastUpdated,
-      rankings: this.allStocks,
-      logs: this.logs,
-    };
-  }
 }
 
 module.exports = { LongShortBot }

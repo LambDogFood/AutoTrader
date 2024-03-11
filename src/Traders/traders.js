@@ -57,8 +57,6 @@ function killTrader(traderName) {
 function initStoredTraders() {
     const profiles = getTraderProfile();
 
-    console.log(profiles);
-
     for (const traderName in profiles) {
         try {
             newTrader(traderName);

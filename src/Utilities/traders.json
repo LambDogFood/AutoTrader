@@ -1,0 +1,17 @@
+{
+  "traders": {
+    "TradingBot1": {
+      "strategy": "LongShort",
+      "apiKey": "PKVQBFX91VU3INZ7MPFC",
+      "apiSecret": "512gQTsahqckUWSmRU1ixm4WfWdbCTLhcgh9Jm1H",
+      "paper": true,
+      "symbols": [
+        "AAPL",
+        "TSLA",
+        "MSFT",
+        "RBLX",
+        "LMT"
+      ]
+    }
+  }
+}

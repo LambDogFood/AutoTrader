@@ -2,7 +2,8 @@
   "proxy": "http://localhost:3000",
   "scripts": {
     "server": "node-env-run server --exec nodemon | pino-colada",
-    "dev": "run-p server start"
+    "dev": "run-p server start",
+    "start": "node src/main.js"
   },
   "dependencies": {
     "@alpacahq/alpaca-trade-api": "^3.0.1",

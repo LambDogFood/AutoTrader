@@ -3,7 +3,7 @@
 require('dotenv').config();
 const { getProfiles } = require("../../Utilities/traderStore")
 
-var updateTime = 30000
+var updateTime = 60000 * 0.5
 var closeTime = 60000 * 15
 
 class LongShortBot {
@@ -44,7 +44,6 @@ class LongShortBot {
 
   async run() {
     if (this.runPromise) {
-      // The bot is already running
       return this.runPromise;
     }
 
@@ -85,12 +84,10 @@ class LongShortBot {
 
       try {
         spin = setInterval(async () => {
-
           this.status = "Online";
 
           // Runtime checker
           if (!this.running) {
-            clearInterval(spin);
             await this.stop();
             resolve(); // Resolve the promise to signal that the bot has stopped
             return;
@@ -114,8 +111,7 @@ class LongShortBot {
 
           // Check market status
           if (this.timeToClose < closeTime) {
-            await this.closePositions(); // Close active positions before closing
-            clearInterval(spin);
+            await this.closePositions();
             this.log("Sleeping until market close.", 1);
             setTimeout(() => {
               this.run();
@@ -125,42 +121,36 @@ class LongShortBot {
           }
 
           this.lastUpdated = new Date().toISOString();
-        });
-
-        await new Promise((resolve) => setTimeout(resolve, updateTime));
-
+        }, updateTime);
       } catch (error) {
         this.log(`HALT! Fatal error: ${error.error}`, 3);
-      } finally {
-        clearInterval(spin);
-        await this.stop();
-        resolve(); // Resolve the promise to signal that the bot has stopped
       }
     });
   }
 
   async closePositions() {
     await this.alpaca
-      .getPositions()
-      .then(async (resp) => {
-        var promClose = [];
-        resp.forEach((position) => {
-          promClose.push(
-            new Promise(async (resolve, reject) => {
-              var orderSide;
-              if (position.side == "long") orderSide = "sell"; else orderSide = "buy";
-              var quantity = Math.abs(position.qty);
-              await this.submitOrder(quantity, position.symbol, orderSide);
-              resolve();
-            })
-          );
-        });
-
-        await Promise.all(promClose);
-      })
-      .catch((err) => {
-        this.log(err.error, 3);
+    .getPositions()
+    .then(async (resp) => {
+      var promClose = [];
+      resp.forEach((position) => {
+        promClose.push(
+          new Promise(async (resolve, reject) => {
+            var orderSide;
+            if (position.side == "long") orderSide = "sell";
+            else orderSide = "buy";
+            var quantity = Math.abs(position.qty);
+            await this.submitOrder(quantity, position.symbol, orderSide);
+            resolve();
+          })
+        );
       });
+
+      await Promise.all(promClose);
+    })
+    .catch((err) => {
+      console.log(err.error);
+    });
   }
 
   awaitMarketOpen() {
@@ -481,7 +471,7 @@ class LongShortBot {
         equity = resp.equity;
       })
       .catch((err) => {
-        this.log(err.error, 3);
+        console.log(err.error);
       });
     this.shortAmount = 0.3 * equity;
     this.longAmount = Number(this.shortAmount) + Number(equity);
@@ -501,30 +491,31 @@ class LongShortBot {
     this.qShort = Math.floor(this.shortAmount / shortTotal);
   }
 
-  async rank() {
-    var promStocks = this.getPercentChanges(this.allStocks);
-    await Promise.all(promStocks);
+  getTotalPrice(stocks) {
+    var proms = [];
 
-    this.allStocks.sort((a, b) => {
-      return a.pc - b.pc;
-    });
-  }
+    stocks.forEach(async (stock) => {
+      proms.push(
+        new Promise(async (resolve, reject) => {
+          const bars = this.alpaca.getBarsV2(
+            stock,
+            {
+              timeframe: this.alpaca.newTimeframe(
+                1,
+                this.alpaca.timeframeUnit.MIN
+              ),
+              limit: 1,
+            },
+            this.alpaca.configuration
+          );
 
-  async getTotalPrice(stock) {
-    try {
-      const bars = await this.alpaca.getBarsV2(
-        stock,
-        { timeframe: this.alpaca.newTimeframe(1, this.alpaca.timeframeUnit.MIN), limit: 1 },
-        this.alpaca.configuration
+          for await (let b of bars) {
+            resolve(b.ClosePrice);
+          }
+        })
       );
-
-      for await (let b of bars) {
-        return b.ClosePrice;
-      }
-    } catch (error) {
-      this.log(error.message, 3);
-      return 0;
-    }
+    });
+    return proms;
   }
 
   async sendBatchOrder(quantity, stocks, side) {
@@ -602,7 +593,7 @@ class LongShortBot {
   };
 
   async log(log, logType = 1) {
-    this.logs.push({ log, logType });
+    //this.logs.push({ log, logType });
     if (logType === 3) {
       console.error(log)
     }

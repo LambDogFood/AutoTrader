@@ -6,6 +6,8 @@
       "apiSecret": "512gQTsahqckUWSmRU1ixm4WfWdbCTLhcgh9Jm1H",
       "paper": true,
       "symbols": [
+        "AMZN",
+        "GOOG",
         "AAPL",
         "TSLA",
         "MSFT",

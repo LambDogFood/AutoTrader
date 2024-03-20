@@ -41,30 +41,7 @@ app.get('/api/status/:traderName', (req, res) => {
     res.json(data)
 });
 
-app.get('/api/logs/:traderName', (req, res) => { 
-    const traderName = req.params.traderName;
-
-    const trader = activeTraders[traderName]
-    if (!trader) {
-        res.status(404).json({error: `Could not find active trader: ${trader}`})
-    }
-
-    res.json(trader.logs)
-});
-
 /* Post requests */
-app.post('/api/stop/:traderName', (req, res) => {
-    const traderName = req.params.traderName;
-
-    const trader = activeTraders[traderName]
-    if (!trader) {
-        res.status(404).json({error: `Could not find active trader: ${trader}`});
-    }
-
-    trader.stop();
-    res.json({message: "Successfully stopped trader."});
-})
-
 app.post('/api/start/:traderName', (req, res) => {
     const traderName = req.params.traderName;
     const trader = newTrader(traderName, false)
@@ -75,21 +52,6 @@ app.post('/api/start/:traderName', (req, res) => {
 
     trader.run();
     res.json({message: "Successfully started trader."});
-})
-
-app.post('/api/kill/:traderName', (req, res) => {
-    const traderName = req.params.traderName;
-    killTrader(traderName);
-
-    res.json({message: "Successfully killed trader."});
-})
-
-app.post('/api/restart/:traderName', (req, res) => {
-    const traderName = req.params.traderName;
-    killTrader(traderName);
-    newTrader(traderName);
-
-    res.json({message: "Successfully restarted trader."});
 })
 
 /* Start Server */

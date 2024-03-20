@@ -55,9 +55,9 @@ class LongShortService {
                 quantity: Math.abs(position.qty),
                 stock: position.symbol,
                 side:
-                  position.side === this.alpaca.positionType.LONG
-                    ? this.alpaca.sideType.SELL
-                    : this.alpaca.sideType.BUY,
+                  position.side === "long"
+                    ? "sell"
+                    : "buy",
               }),
             ),
           )
@@ -82,26 +82,31 @@ class LongShortService {
       this.stockList.map(stock => {
         return new Promise(async resolve => {
           try {
-            const resp = await this.alpaca.instance.getBars(
-              'minute',
+            const resp = this.alpaca.instance.getBarsV2(
               stock.name,
               {
+                timeframe: this.alpaca.instance.newTimeframe(
+                  1,
+                  this.alpaca.instance.timeframeUnit.MIN
+                ),
                 limit: limit,
               },
-            )
-            if (this.alpaca.instance.configuration.usePolygon) {
-              const l = resp[stock.name].length
-              const last_close = resp[stock.name][l - 1].c
-              const first_open = resp[stock.name][0].o
-              stock.pc = (last_close - first_open) / first_open
-            } else {
-              const l = resp[stock.name].length
-              const last_close = resp[stock.name][l - 1].closePrice
-              const first_open = resp[stock.name][0].openPrice
-              stock.pc = (last_close - first_open) / first_open
+              this.alpaca.instance.configuration
+            );
+
+            for await (let bar of resp) {
+              if (this.alpaca.instance.configuration.usePolygon) {
+                const closing = bar.c;
+                const opening = bar.o;
+                stock.pc = (closing - opening) / opening;
+              } else {
+                const closing = bar.ClosePrice;
+                const opening = bar.OpenPrice;
+                stock.pc = (closing - opening) / opening;
+              }
             }
           } catch (err) {
-            console.error(err.message)
+            console.error(`Could not get bars: ${err.message}`)
           }
           resolve()
         })
@@ -128,9 +133,8 @@ class LongShortService {
 
     try {
       const result = await this.alpaca.instance.getAccount()
-      const equity = result.equity
-      this.shortAmount = 0.3 * equity
-      this.longAmount = Number(this.shortAmount) + Number(equity)
+      this.shortAmount = result.equity * 0.3
+      this.longAmount = Number(this.shortAmount) + Number(result.equity)
     } catch (err) {
       console.error(err.error)
     }
@@ -157,16 +161,27 @@ class LongShortService {
       stocks.map(stock => {
         return new Promise(async resolve => {
           try {
-            const resp = await this.alpaca.instance.getBars('minute', stock, {
-              limit: 1,
-            })
-            if (this.alpaca.instance.configuration.usePolygon) {
-              resolve(resp[stock][0].c)
-            } else {
-              resolve(resp[stock][0].closePrice)
+            const resp = await this.alpaca.instance.getBarsV2(
+              stock,
+              {
+                timeframe: this.alpaca.instance.newTimeframe(
+                  1,
+                  this.alpaca.instance.timeframeUnit.MIN
+                ),
+                limit: 1,
+              },
+              this.alpaca.instance.configuration
+            );
+
+            for await (let bar of resp) {
+              if (this.alpaca.instance.configuration.usePolygon) {
+                resolve(bar.c)
+              } else {
+                resolve(bar.ClosePrice)
+              }
             }
           } catch (err) {
-            console.error(err.message)
+            console.error(`Could not get bars2: ${err.message}`)
           }
         })
       }),
@@ -185,7 +200,6 @@ class LongShortService {
     let positions
     try {
       positions = await this.alpaca.instance.getPositions()
-      console.log(positions)
     } catch (err) {
       console.error(err.error)
     }
@@ -207,20 +221,20 @@ class LongShortService {
                   quantity,
                   stock: symbol,
                   side:
-                    position.side === this.alpaca.positionType.LONG
-                      ? this.alpaca.sideType.SELL
-                      : this.alpaca.sideType.BUY,
+                    position.side === "long"
+                      ? "sell"
+                      : "buy",
                 })
                 resolve()
               } catch (err) {
                 console.error(err.error)
               }
-            } else if (position.side === this.alpaca.positionType.LONG) {
+            } else if (position.side === "long") {
               try {
                 await this.alpaca.submitOrder({
                   quantity,
                   stock: symbol,
-                  side: this.alpaca.sideType.SELL,
+                  side: "sell",
                 })
                 resolve()
               } catch (err) {
@@ -235,8 +249,8 @@ class LongShortService {
                     stock: symbol,
                     side:
                       diff > 0
-                        ? this.alpaca.sideType.BUY
-                        : this.alpaca.sideType.SELL,
+                        ? "buy"
+                        : "sell",
                   })
                 } catch (err) {
                   console.error(err.error)
@@ -246,12 +260,12 @@ class LongShortService {
               this.blacklist.add(symbol)
               resolve()
             }
-          } else if (position.side === this.alpaca.positionType.SHORT) {
+          } else if (position.side === "short") {
             try {
               await this.alpaca.submitOrder({
                 quantity,
                 stock: symbol,
-                side: this.alpaca.sideType.BUY,
+                side: "buy",
               })
               resolve()
             } catch (err) {
@@ -261,7 +275,7 @@ class LongShortService {
             if (quantity !== this.qLong) {
               const diff = Number(quantity) - Number(this.qLong)
               const side =
-                diff > 0 ? this.alpaca.sideType.SELL : this.alpaca.sideType.BUY
+                diff > 0 ? "sell" : "buy"
               try {
                 await this.alpaca.submitOrder({
                   quantity: Math.abs(diff),
@@ -288,12 +302,12 @@ class LongShortService {
         this.sendBatchOrder({
           quantity: this.qLong,
           stocks: this.long,
-          side: this.alpaca.sideType.BUY,
+          side: "buy"
         }),
         this.sendBatchOrder({
           quantity: this.qShort,
           stocks: this.short,
-          side: this.alpaca.sideType.SELL,
+          side: "sell",
         }),
       ])
 
@@ -334,7 +348,7 @@ class LongShortService {
               this.alpaca.submitOrder({
                 quantity: this.qLong,
                 stock,
-                side: this.alpaca.sideType.BUY,
+                side: "buy",
               }),
             ),
           ]
@@ -348,7 +362,7 @@ class LongShortService {
               this.alpaca.submitOrder({
                 quantity: this.qShort,
                 stock,
-                side: this.alpaca.sideType.SELL,
+                side: "sell",
               }),
             ),
           ]
@@ -373,6 +387,7 @@ class LongShortService {
     return new Promise(async resolve => {
       const incomplete = []
       const executed = []
+
       await Promise.all(
         stocks.map(stock => {
           return new Promise(async resolve => {
@@ -383,6 +398,7 @@ class LongShortService {
                   stock,
                   side,
                 })
+
                 if (isSubmitted) {
                   executed.push(stock)
                 } else {

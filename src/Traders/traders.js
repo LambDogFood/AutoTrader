@@ -1,9 +1,10 @@
 // LordDogFood
 
-const { LongShortBot } = require('./Strategies/LongShortBot');
+const { LongShortService } = require('./Strategies/LongShort');
 const { getTraderProfile } = require('../Utilities/traderStore');
+const { MeanReversionService } = require('./Strategies/MeanReversion');
 
-const activeTraders= {};
+const activeTraders = {};
 
 function newTrader(traderName, willRun = true) {
     const traderProfile = getTraderProfile(traderName);
@@ -18,16 +19,7 @@ function newTrader(traderName, willRun = true) {
         return activeTraders[traderName];
     }
 
-    let trader = null;
-
-    if (traderProfile.strategy === "LongShort") {
-        trader = new LongShortBot(
-            traderProfile.apiKey,
-            traderProfile.apiSecret,
-            traderProfile.paper,
-            traderProfile.symbols
-        );
-    }
+    let trader = createTraderInstance(traderProfile);
 
     if (!trader) {
         console.error(`Failed to create ${traderName}`);
@@ -50,7 +42,6 @@ function killTrader(traderName) {
         return;
     }
 
-    trader.stop();
     delete activeTraders[traderName];
 }
 
@@ -67,4 +58,26 @@ function initStoredTraders() {
 }
 initStoredTraders();
 
-module.exports = { newTrader, killTrader, activeTraders }
+function createTraderInstance(traderProfile) {
+    switch (traderProfile.strategy) {
+        case "LongShort":
+            return new LongShortService(
+                traderProfile.apiKey,
+                traderProfile.apiSecret,
+                traderProfile.paper,
+                traderProfile.symbols
+            );
+        case "MeanReversion":
+            return new MeanReversionService(
+                traderProfile.apiKey,
+                traderProfile.apiSecret,
+                traderProfile.paper,
+                traderProfile.symbols
+            )  
+        default:
+            console.error(`Unknown strategy ${traderProfile.strategy} for trader ${traderProfile.name}`);
+            return null;
+    }
+}
+
+module.exports = { newTrader, killTrader, activeTraders };

@@ -2,17 +2,25 @@
   "traders": {
     "TradingBot1": {
       "strategy": "LongShort",
-      "apiKey": "PKVQBFX91VU3INZ7MPFC",
-      "apiSecret": "512gQTsahqckUWSmRU1ixm4WfWdbCTLhcgh9Jm1H",
+      "apiKey": "PKPRD3ZET1DDJ1RJGOEH",
+      "apiSecret": "t99yPEGdWnRJROcyrEw9fnofju7OEtKBKqaByWct",
       "paper": true,
       "symbols": [
-        "AMZN",
-        "GOOG",
         "AAPL",
-        "TSLA",
         "MSFT",
-        "RBLX",
-        "LMT"
+        "GOOGL",
+        "AMZN",
+        "TSLA",
+        "NVDA",
+        "JPM",
+        "V",
+        "NFLX",
+        "PYPL",
+        "DIS",
+        "CRM",
+        "MA",
+        "BRK.B",
+        "RBXL"
       ]
     }
   }

@@ -39,7 +39,7 @@ function getTraderProfile(traderName) {
         });
 }
 
-async function newProfile(traderName, strategy, apiKey, apiSecret, symbols, paper) {
+async function newProfile(traderName, strategy, apiKey, apiSecret, symbols, paper, bucketPct) {
     let profiles;
     try {
         profiles = await readTraderProfiles();
@@ -47,7 +47,7 @@ async function newProfile(traderName, strategy, apiKey, apiSecret, symbols, pape
             console.warn(`Warning: Cannot create profile, ${traderName} already exists.`);
             return false;
         }
-        profiles[traderName] = { strategy, apiKey, apiSecret, paper, symbols };
+        profiles[traderName] = { strategy, apiKey, apiSecret, paper, bucketPct, symbols };
         await writeTraderProfiles(profiles);
         return true;
     } catch (error) {

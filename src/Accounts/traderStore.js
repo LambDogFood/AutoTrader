@@ -4,7 +4,7 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const profilesPath = path.join(__dirname, './traders.json');
+const profilesPath = path.join(__dirname, './Traders.json');
 
 async function readTraderProfiles() {
     try {
@@ -25,18 +25,18 @@ async function writeTraderProfiles(profiles) {
     }
 }
 
-function getTraderProfile(traderName) {
-    return readTraderProfiles()
-        .then(traders => {
-            if (!traderName) {
-                return traders;
-            }
-            return traders[traderName];
-        })
-        .catch(error => {
-            console.error('Error retrieving trader profile:', error.message);
-            return null;
-        });
+async function getTraderProfile(traderName) {
+    try {
+        const traders = await readTraderProfiles();
+
+        if (!traderName) {
+            return traders;
+        }
+        return traders[traderName];
+    } catch (error) {
+        console.error('Error retrieving trader profile:', error.message);
+        throw error;
+    }
 }
 
 async function newProfile(traderName, strategy, apiKey, apiSecret, symbols, paper, bucketPct) {

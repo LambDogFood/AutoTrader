@@ -1,8 +1,8 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
-const { getTraderProfile } = require('./Accounts/traderStore');
-const { activeTraders, newTrader } = require('./Traders/traders');
+const { getTraderProfile } = require('./Accounts/TraderStore');
+const { activeTraders, newTrader } = require('./Traders/Traders')
 
 dotenv.config();
 

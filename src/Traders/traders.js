@@ -1,11 +1,11 @@
 const { LongShortService } = require('./Strategies/LongShort');
-const { getTraderProfile } = require('../Accounts/traderStore');
+const { getTraderProfile } = require('../Accounts/TraderStore');
 const { MeanReversionService } = require('./Strategies/MeanReversion');
 
 const activeTraders = {};
-
-function newTrader(traderName, willRun = true) {
-    const traderProfile = getTraderProfile(traderName);
+ 
+async function newTrader(traderName, willRun=true) {
+    const traderProfile = await getTraderProfile(traderName);
 
     if (!traderProfile) {
         console.error(`Trader ${traderName} does not exist.`);
@@ -43,8 +43,8 @@ function killTrader(traderName) {
     delete activeTraders[traderName];
 }
 
-function initStoredTraders() {
-    const profiles = getTraderProfile();
+async function initStoredTraders() {
+    const profiles = await getTraderProfile();
 
     for (const traderName in profiles) {
         try {

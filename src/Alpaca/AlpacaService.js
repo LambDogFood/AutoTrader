@@ -1,7 +1,6 @@
-
 const Alpaca = require('@alpacahq/alpaca-trade-api')
 
-const MINUTE = 60000
+const MINUTE = 60_000
 
 class AlpacaService {
   constructor({ keyId, secretKey, paper = true }) {
@@ -101,12 +100,11 @@ class AlpacaService {
     )
   }
 
-  // Submit an order if quantity is above 0.
   async submitOrder({ quantity, stock, side }) {
     return new Promise(async resolve => {
       if (quantity <= 0) {
         console.log(
-          `Quantity is <=0, order of | ${quantity} ${stock} ${side} | not sent.`,
+          `Quantity is <=0, order  of | ${quantity} ${stock} ${side} | not sent.`,
         )
         resolve(true)
         return
@@ -133,7 +131,6 @@ class AlpacaService {
     })
   }
 
-  // Submit a limit order if quantity is above 0.
   async submitLimitOrder({
     quantity,
     stock,

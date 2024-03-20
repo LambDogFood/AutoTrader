@@ -1,6 +1,6 @@
 const { AlpacaService } = require('../../Alpaca/AlpacaService')
 
-const MINUTE = 60000
+const MINUTE = 60_000
 const THIRTY_SECONDS = 30
 
 class LongShortService {
@@ -29,10 +29,8 @@ class LongShortService {
   }
 
   async run() {
-    // First, cancel any existing orders so they don't impact our buying power.
     await this.alpaca.cancelExistingOrders()
 
-    // Wait for market to open.
     console.log('Waiting for market to open...')
     await this.alpaca.awaitMarketOpen()
     console.log('Market opened.')
@@ -41,14 +39,11 @@ class LongShortService {
   }
 
   async rebalancePorfolio(seconds) {
-    // Rebalance the portfolio every minute, making necessary trades.
     const spin = setInterval(async () => {
-      // Figure out when the market will close so we can prepare to sell beforehand.
       const INTERVAL = 15 // minutes
       this.timeToClose = await this.alpaca.getTimeToClose()
 
       if (this.timeToClose < MINUTE * INTERVAL) {
-        // Close all positions when 15 minutes til market close.
         console.log('Market closing soon. Closing positions.')
 
         try {
@@ -74,17 +69,14 @@ class LongShortService {
         console.log(`Sleeping until market close (${INTERVAL} minutes).`)
 
         setTimeout(() => {
-          // Run script again after market close for next trading day.
           this.run()
         }, MINUTE * INTERVAL)
       } else {
-        // Rebalance the portfolio.
         await this.rebalance()
       }
     }, seconds * 1000)
   }
 
-  // Get percent changes of the stock prices over the past 10 minutes.
   getPercentChanges(limit = 10) {
     return Promise.all(
       this.stockList.map(stock => {
@@ -97,8 +89,6 @@ class LongShortService {
                 limit: limit,
               },
             )
-            // polygon and alpaca have different responses to keep backwards
-            // compatibility, so we handle it a bit differently
             if (this.alpaca.instance.configuration.usePolygon) {
               const l = resp[stock.name].length
               const last_close = resp[stock.name][l - 1].c
@@ -119,22 +109,16 @@ class LongShortService {
     )
   }
 
-  // Mechanism used to rank the stocks, the basis of the Long-Short Equity Strategy.
   async rank()  {
-    // Ranks all stocks by percent change over the past 10 minutes (higher is better).
     await this.getPercentChanges()
 
-    // Sort the stocks in place by the percent change field (marked by pc).
     this.stockList.sort((a, b) => {
       return a.pc - b.pc
     })
   }
 
-  // Re-rank all stocks to adjust longs and shorts.
   async rerank()  {
     await this.rank()
-    // Grabs the top and bottom bucket (according to percentage) of the sorted stock list
-    // to get the long and short lists.
     const bucketSize = Math.floor(this.stockList.length * this.bucketPct)
 
     this.short = this.stockList.slice(0, bucketSize).map(item => item.name)
@@ -142,8 +126,6 @@ class LongShortService {
       .slice(this.stockList.length - bucketSize)
       .map(item => item.name)
 
-    // Determine amount to long/short based on total stock price of each bucket.
-    // Employs 130-30 Strategy
     try {
       const result = await this.alpaca.instance.getAccount()
       const equity = result.equity
@@ -170,7 +152,6 @@ class LongShortService {
     }
   }
 
-  // Get the total price of the array of input stocks.
   async getTotalPrice(stocks = [])  {
     return Promise.all(
       stocks.map(stock => {
@@ -179,8 +160,6 @@ class LongShortService {
             const resp = await this.alpaca.instance.getBars('minute', stock, {
               limit: 1,
             })
-            // polygon and alpaca have different responses to keep backwards
-            // compatibility, so we handle it a bit differently
             if (this.alpaca.instance.configuration.usePolygon) {
               resolve(resp[stock][0].c)
             } else {
@@ -194,11 +173,8 @@ class LongShortService {
     )
   }
 
-  // Rebalance our position after an update.
   async rebalance() {
     await this.rerank()
-
-    // Clear existing orders again.
     await this.alpaca.cancelExistingOrders()
 
     console.log(`We are taking a long position in: ${this.long.toString()}`)
@@ -206,8 +182,6 @@ class LongShortService {
       `We are taking a short position in: ${this.short.toString()}`,
     )
 
-    // Remove positions that are no longer in the short or long list, and make a list of positions that do not need to change.
-    // Adjust position quantities if needed.
     let positions
     try {
       positions = await this.alpaca.instance.getPositions()
@@ -227,9 +201,7 @@ class LongShortService {
           const symbol = position.symbol
 
           if (this.long.indexOf(symbol) < 0) {
-            // Position is not in short list.
             if (this.short.indexOf(symbol) < 0) {
-              // Clear position.
               try {
                 await this.alpaca.submitOrder({
                   quantity,
@@ -244,9 +216,7 @@ class LongShortService {
                 console.error(err.error)
               }
             } else if (position.side === this.alpaca.positionType.LONG) {
-              // Position in short list.
               try {
-                // Position changed from long to short. Clear long position and short instead
                 await this.alpaca.submitOrder({
                   quantity,
                   stock: symbol,
@@ -257,16 +227,12 @@ class LongShortService {
                 console.error(err.error)
               }
             } else {
-              // Position is not where we want it.
               if (quantity !== this.qShort) {
-                // Need to adjust position amount
                 const diff = Number(quantity) - Number(this.qShort)
                 try {
                   await this.alpaca.submitOrder({
                     quantity: Math.abs(diff),
                     stock: symbol,
-                    // buy = Too many short positions. Buy some back to rebalance.
-                    // sell = Too little short positions. Sell some more.
                     side:
                       diff > 0
                         ? this.alpaca.sideType.BUY
@@ -281,8 +247,6 @@ class LongShortService {
               resolve()
             }
           } else if (position.side === this.alpaca.positionType.SHORT) {
-            // Position in long list.
-            // Position changed from short to long. Clear short position and long instead.
             try {
               await this.alpaca.submitOrder({
                 quantity,
@@ -294,12 +258,8 @@ class LongShortService {
               console.error(err.error)
             }
           } else {
-            // Position is not where we want it.
             if (quantity !== this.qLong) {
-              // Need to adjust position amount.
               const diff = Number(quantity) - Number(this.qLong)
-              // sell = Too many long positions. Sell some to rebalance.
-              // buy = Too little long positions. Buy some more.
               const side =
                 diff > 0 ? this.alpaca.sideType.SELL : this.alpaca.sideType.BUY
               try {
@@ -324,7 +284,6 @@ class LongShortService {
     this.adjustedQShort = -1
 
     try {
-      // Send orders to all remaining stocks in the long and short list
       const [longOrders, shortOrders] = await Promise.all([
         this.sendBatchOrder({
           quantity: this.qLong,
@@ -341,7 +300,6 @@ class LongShortService {
       executed.long = longOrders.executed.slice()
       executed.short = shortOrders.executed.slice()
 
-      // Handle rejected/incomplete long orders
       if (longOrders.incomplete.length > 0 && longOrders.executed.length > 0) {
         const prices = await this.getTotalPrice(longOrders.executed)
         const completeTotal = prices.reduce((a, b) => a + b, 0)
@@ -350,7 +308,6 @@ class LongShortService {
         }
       }
 
-      // Handle rejected/incomplete short orders
       if (
         shortOrders.incomplete.length > 0 &&
         shortOrders.executed.length > 0
@@ -366,7 +323,6 @@ class LongShortService {
     }
 
     try {
-      // Reorder stocks that didn't throw an error so that the equity quota is reached.
       await new Promise(async resolve => {
         let allProms = []
 
@@ -409,7 +365,6 @@ class LongShortService {
     }
   }
 
-  // Submit a batch order that returns completed and uncompleted orders.
   async sendBatchOrder({
     quantity,
     stocks,

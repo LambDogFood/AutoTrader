@@ -1,7 +1,5 @@
-// LordDogFood
-
 const { LongShortService } = require('./Strategies/LongShort');
-const { getTraderProfile } = require('../Utilities/traderStore');
+const { getTraderProfile } = require('../Accounts/traderStore');
 const { MeanReversionService } = require('./Strategies/MeanReversion');
 
 const activeTraders = {};
@@ -65,7 +63,8 @@ function createTraderInstance(traderProfile) {
                 traderProfile.apiKey,
                 traderProfile.apiSecret,
                 traderProfile.paper,
-                traderProfile.symbols
+                traderProfile.symbols,
+                traderProfile.bucketPct,
             );
         case "MeanReversion":
             return new MeanReversionService(

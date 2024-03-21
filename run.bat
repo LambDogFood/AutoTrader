@@ -1,3 +1,3 @@
 @ECHO OFF
-node src/app --allow-net --allow-read src/app
+node src/main --allow-net --allow-read src/main
 PAUSE

@@ -1,6 +1,6 @@
 const { AlpacaService } = require('../../Alpaca/AlpacaService')
 
-const MINUTE = 60_000
+const MINUTE = 60000
 const THIRTY_SECONDS = 30
 
 class LongShortService {

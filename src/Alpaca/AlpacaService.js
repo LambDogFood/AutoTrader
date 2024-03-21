@@ -1,6 +1,6 @@
 const Alpaca = require('@alpacahq/alpaca-trade-api')
 
-const MINUTE = 60_000
+const MINUTE = 60000
 
 class AlpacaService {
   constructor({ keyId, secretKey, paper = true }) {

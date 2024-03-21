@@ -20,9 +20,6 @@ class MeanReversionService {
 
   async run() {
     if (!this.stock) {
-      console.error(
-        'Please include a valid MEAN_REVERSION_STOCK env variable',
-      )
       return
     }
     await this.alpaca.cancelExistingOrders()
@@ -41,9 +38,21 @@ class MeanReversionService {
         await this.alpaca.instance.getCalendar(Date.now()).then(async resp => {
           const marketOpen = resp[0].open
           await this.alpaca.instance
-            .getBars('minute', this.stock, { start: marketOpen })
+            .getBarsV2(
+              stock.name,
+              {
+                start: marketOpen,
+                timeframe: this.alpaca.instance.newTimeframe(
+                  1,
+                  this.alpaca.instance.timeframeUnit.MIN
+                ),
+              },
+              this.alpaca.instance.configuration
+            )
             .then(resp => {
-              const bars = resp[this.stock]
+              const bars = [];
+              for await(let bar of resp) { bars.push(bar) };
+
               if (bars.length >= minutes) {
                 clearInterval(barChecker)
                 resolve()
@@ -77,7 +86,7 @@ class MeanReversionService {
               await this.alpaca.submitOrder({
                 quantity: positionQuantity,
                 stock: this.stock,
-                side: this.alpaca.sideType.SELL,
+                side: "sell",
               })
             })
             .catch(err => {
@@ -111,18 +120,29 @@ class MeanReversionService {
     }
 
     let bars
-    await this.alpaca.instance
-      .getBars('minute', this.stock, { limit: 20 })
+    await this.alpaca.instance.getBarsV2(
+        stock.name,
+        {
+          timeframe: this.alpaca.instance.newTimeframe(
+            1,
+            this.alpaca.instance.timeframeUnit.MIN
+          ),
+          limit: 20,
+        },
+        this.alpaca.instance.configuration
+      )
       .then(resp => {
-        bars = resp[this.stock]
+        for await (let bar of resp) { bars.push(bar) }
       })
       .catch(err => {
         console.log(err.error)
       })
-    const currPrice = bars[bars.length - 1].closePrice
+
+    const currPrice =  this.alpaca.instance.configuration.usePolygon ? bars[bars.length - 1].c : bars[bars.length - 1].ClosePrice
     this.runningAverage = 0
     bars.forEach(bar => {
-      this.runningAverage += bar.closePrice
+      const price = this.alpaca.instance.configuration.usePolygon ? bar.c : bar.ClosePrice
+      this.runningAverage += price
     })
     this.runningAverage /= 20
 
@@ -133,7 +153,7 @@ class MeanReversionService {
           quantity: positionQuantity,
           stock: this.stock,
           price: currPrice,
-          side: this.alpaca.sideType.SELL,
+          side: "sell",
         })
       } else console.log('No position in the stock.  No action required.')
     } else if (currPrice < this.runningAverage) {
@@ -160,7 +180,7 @@ class MeanReversionService {
           quantity: qtyToBuy,
           stock: this.stock,
           price: currPrice,
-          side: this.alpaca.sideType.BUY,
+          side: "buy",
         })
       } else {
         amountToAdd *= -1
@@ -170,7 +190,7 @@ class MeanReversionService {
           quantity: qtyToSell,
           stock: this.stock,
           price: currPrice,
-          side: this.alpaca.sideType.SELL,
+          side: "sell",
         })
       }
     }
